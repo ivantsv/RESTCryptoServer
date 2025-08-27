@@ -10,10 +10,19 @@ COPY . .
 RUN go build -o server ./cmd/server
 
 FROM alpine:latest
+RUN apk --no-cache add ca-certificates tzdata
 
 WORKDIR /app
 
 COPY --from=builder /app/server .
+COPY --from=builder /app/internal/db/migrations ./internal/db/migrations
+
+RUN addgroup -g 1000 appgroup && \
+    adduser -D -u 1000 -G appgroup appuser && \
+    chown -R appuser:appgroup /app
+
+
+USER appuser
 
 EXPOSE 8080
 

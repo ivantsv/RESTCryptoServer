@@ -22,33 +22,52 @@ type UserDB struct {
 }
 
 func NewUserDB() (*UserDB, error) {
-    db, err := sql.Open("postgres", os.Getenv("DB_DSN"))
+    dsn := os.Getenv("DB_DSN")
+    if dsn == "" {
+        return nil, errors.New("DB_DSN environment variable is required")
+    }
+    
+    db, err := sql.Open("postgres", dsn)
     if err != nil {
         return nil, err
     }
+
     if err := db.Ping(); err != nil {
         return nil, err
     }
 
-    driver, err := postgres.WithInstance(db, &postgres.Config{})
-    if err != nil {
+    if err := runMigrations(db); err != nil {
         return nil, err
     }
 
+    return &UserDB{conn: db}, nil
+}
+
+func runMigrations(db *sql.DB) error {
+    driver, err := postgres.WithInstance(db, &postgres.Config{})
+    if err != nil {
+        return err
+    }
+
+    migrationsPath := "file://internal/db/migrations"
+    
     m, err := migrate.NewWithDatabaseInstance(
-        "file:///app/internal/db/migrations",
-        "postgres", driver,
+        migrationsPath,
+        "postgres", 
+        driver,
     )
     if err != nil {
-        return nil, err
+        return err
     }
 
     err = m.Up()
     if err != nil && err != migrate.ErrNoChange {
-        log.Fatalf("Migration failed: %v", err)
+        log.Printf("Migration failed: %v", err)
+        return err
     }
 
-    return &UserDB{conn: db}, nil
+    log.Println("Database migrations completed successfully")
+    return nil
 }
 
 func (udb *UserDB) Insert(login string, password string) error {
@@ -89,4 +108,11 @@ func (udb *UserDB) Delete(login string) error {
 	}
 
 	return nil
+}
+
+func (udb *UserDB) Close() error {
+    if udb.conn != nil {
+        return udb.conn.Close()
+    }
+    return nil
 }

@@ -15,6 +15,7 @@ func main() {
 		log.Println("error during opening/creation users postgres db: ", err)
 		return
 	}
+	defer userdb.Close()
 
 	authService := auth.NewAuthService(userdb)
 
