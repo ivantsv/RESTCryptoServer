@@ -17,6 +17,16 @@ func main() {
 	}
 	defer userdb.Close()
 
+	cryptodb, err := db.NewCryptoDB()
+	if err != nil {
+		log.Println("error during opening/creation users postgres db: ", err)
+		return
+	}
+	defer cryptodb.Close()
+
+	log.Println("Connected to PostgreSQL")
+	log.Println("All database migrations completed")
+
 	authService := auth.NewAuthService(userdb)
 
 	router := chi.NewRouter()
