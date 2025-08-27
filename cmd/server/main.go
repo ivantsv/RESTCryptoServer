@@ -3,6 +3,7 @@ package main
 import (
 	"RESTCryptoServer/internal/auth"
 	"RESTCryptoServer/internal/db"
+	"RESTCryptoServer/internal/redis"
 	"log"
 	"net/http"
 
@@ -19,10 +20,18 @@ func main() {
 
 	cryptodb, err := db.NewCryptoDB()
 	if err != nil {
-		log.Println("error during opening/creation users postgres db: ", err)
+		log.Println("error during opening/creation crypto postgres db: ", err)
 		return
 	}
 	defer cryptodb.Close()
+
+	cache, err := redis.NewRedisClient()
+	if err != nil {
+		log.Println("error during cache redis db: ", err)
+		return
+	}
+	defer cache.Close()
+
 
 	log.Println("Connected to PostgreSQL")
 	log.Println("All database migrations completed")
