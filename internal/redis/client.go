@@ -124,6 +124,31 @@ func (r *RedisClient) GetHistoryCount(symbol string) (int, error) {
     return int(count), nil
 }
 
+func (r *RedisClient) GetPriceHistory(symbol string, limit int) ([]PriceHistoryEntry, error) {
+    if limit <= 0 || limit > 100 {
+        limit = 100
+    }
+    
+    key := fmt.Sprintf("price_history:%s", symbol)
+
+    result, err := r.client.LRange(r.ctx, key, 0, int64(limit-1)).Result()
+    if err != nil {
+        return nil, fmt.Errorf("failed to get price history: %w", err)
+    }
+    
+    var history []PriceHistoryEntry
+    for _, data := range result {
+        var entry PriceHistoryEntry
+        if err := json.Unmarshal([]byte(data), &entry); err != nil {
+            log.Printf("Failed to unmarshal price entry: %v", err)
+            continue
+        }
+        history = append(history, entry)
+    }
+    
+    return history, nil
+}
+
 func (r *RedisClient) Close() error {
     if r.client != nil {
         return r.client.Close()
