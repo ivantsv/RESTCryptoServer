@@ -1,9 +1,11 @@
 package crypto
 
 import (
-	"net/http"
 	"encoding/json"
 	"log"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type SymbolJSON struct {
@@ -56,8 +58,10 @@ func POSTCryptoHandler(cs *CryptoService) http.HandlerFunc {
 	}
 }
 
-func GETCryptoSymbolHandler(cs *CryptoService, symbol string) http.HandlerFunc {
+func GETCryptoSymbolHandler(cs *CryptoService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		symbol := chi.URLParam(r, "symbol")
+
 		resp, err := cs.GetCrypto(symbol)
 		if err != nil {
 			log.Println("error during getting crypto from postgres: ", err)
@@ -72,8 +76,10 @@ func GETCryptoSymbolHandler(cs *CryptoService, symbol string) http.HandlerFunc {
 	}
 }
 
-func PUTCryptoSymbolRefreshHandler(cs *CryptoService, symbol string) http.HandlerFunc {
+func PUTCryptoSymbolRefreshHandler(cs *CryptoService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		symbol := chi.URLParam(r, "symbol")
+
 		resp, err := cs.RefreshCrypto(symbol)
 		if err == ErrCryptoNotFound {
 			log.Println(err)
@@ -93,8 +99,10 @@ func PUTCryptoSymbolRefreshHandler(cs *CryptoService, symbol string) http.Handle
 	}
 }
 
-func GETCryptoHistoryHandler(cs *CryptoService, symbol string) http.HandlerFunc {
+func GETCryptoHistoryHandler(cs *CryptoService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		symbol := chi.URLParam(r, "symbol")
+
 		resp, _ := cs.GetCryptoHistory(symbol)
 		
 		w.Header().Set("Content-Type", "application/json")
@@ -104,8 +112,10 @@ func GETCryptoHistoryHandler(cs *CryptoService, symbol string) http.HandlerFunc 
 	}
 }
 
-func GETCryptoStatsHandler(cs *CryptoService, symbol string) http.HandlerFunc {
+func GETCryptoStatsHandler(cs *CryptoService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		symbol := chi.URLParam(r, "symbol")
+
 		resp, _ := cs.GetCryptoStats(symbol)
 
 		w.Header().Set("Content-Type", "application/json")
@@ -115,8 +125,10 @@ func GETCryptoStatsHandler(cs *CryptoService, symbol string) http.HandlerFunc {
 	}
 }
 
-func DELETECryptoSymbolHandler(cs *CryptoService, symbol string) http.HandlerFunc {
+func DELETECryptoSymbolHandler(cs *CryptoService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		symbol := chi.URLParam(r, "symbol")
+
 		err := cs.DeleteCrypto(symbol)
 		if err != nil {
 			log.Println(err)
