@@ -9,6 +9,12 @@ import (
 	"math"
 	"strings"
 	"time"
+	"errors"
+)
+
+var (
+	ErrNameConflict error = errors.New("cryptocurrency already exists")
+	ErrCryptoNotFound error = errors.New("cryptocurrency not found")
 )
 
 type CryptoResponse struct {
@@ -59,7 +65,7 @@ func (cs *CryptoService) AddCrypto(symbol string) (*CryptoResponse, error) {
 
 	cnt, err := cs.redisClient.GetHistoryCount(symbol)
 	if cnt != 0 {
-		return nil, fmt.Errorf("cryptocurrency %s already exists", symbol)
+		return nil, ErrNameConflict
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error during checking cryptocurrency: %s", err)
@@ -67,7 +73,7 @@ func (cs *CryptoService) AddCrypto(symbol string) (*CryptoResponse, error) {
 
 	_, err = cs.cryptoDB.Get(symbol)
 	if err == nil {
-		return nil, fmt.Errorf("cryptocurrency %s already exists", symbol)
+		return nil, ErrNameConflict
 	}
 	if err != db.ErrUnknownCoin {
 		return nil, fmt.Errorf("database error: %w", err)
@@ -103,7 +109,7 @@ func (cs *CryptoService) GetCrypto(symbol string) (*CryptoResponse, error) {
 
 	cnt, err := cs.redisClient.GetHistoryCount(symbol)
 	if cnt == 0 {
-		return nil, fmt.Errorf("cryptocurrency %s not found", symbol)
+		return nil, ErrCryptoNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error during checking cryptocurrency: %s", err)
@@ -112,7 +118,7 @@ func (cs *CryptoService) GetCrypto(symbol string) (*CryptoResponse, error) {
 	coinData, err := cs.cryptoDB.Get(symbol)
 	if err != nil {
 		if err == db.ErrUnknownCoin {
-			return nil, fmt.Errorf("cryptocurrency %s not found", symbol)
+			return nil, ErrCryptoNotFound
 		}
 		return nil, fmt.Errorf("database error: %w", err)
 	}
@@ -130,7 +136,7 @@ func (cs *CryptoService) RefreshCrypto(symbol string) (*CryptoResponse, error) {
 	
 	cnt, err := cs.redisClient.GetHistoryCount(symbol)
 	if cnt == 0 {
-		return nil, fmt.Errorf("cryptocurrency %s not found", symbol)
+		return nil, ErrCryptoNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error during checking cryptocurrency: %s", err)
@@ -139,7 +145,7 @@ func (cs *CryptoService) RefreshCrypto(symbol string) (*CryptoResponse, error) {
 	_, err = cs.cryptoDB.Get(symbol)
 	if err != nil {
 		if err == db.ErrUnknownCoin {
-			return nil, fmt.Errorf("cryptocurrency %s not found", symbol)
+			return nil, ErrCryptoNotFound
 		}
 		return nil, fmt.Errorf("database error: %w", err)
 	}
@@ -152,7 +158,7 @@ func (cs *CryptoService) GetCryptoHistory(symbol string) (*CryptoHistoryResponse
 
 	cnt, err := cs.redisClient.GetHistoryCount(symbol)
 	if cnt == 0 {
-		return nil, fmt.Errorf("cryptocurrency %s not found", symbol)
+		return nil, ErrCryptoNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error during checking cryptocurrency: %s", err)
@@ -175,7 +181,7 @@ func (cs *CryptoService) GetCryptoStats(symbol string) (*CryptoStatsResponse, er
 	
 	cnt, err := cs.redisClient.GetHistoryCount(symbol)
 	if cnt == 0 {
-		return nil, fmt.Errorf("cryptocurrency %s not found", symbol)
+		return nil, ErrCryptoNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error during checking cryptocurrency: %s", err)
@@ -184,7 +190,7 @@ func (cs *CryptoService) GetCryptoStats(symbol string) (*CryptoStatsResponse, er
 	coinData, err := cs.cryptoDB.Get(symbol)
 	if err != nil {
 		if err == db.ErrUnknownCoin {
-			return nil, fmt.Errorf("cryptocurrency %s not found", symbol)
+			return nil, ErrCryptoNotFound
 		}
 		return nil, fmt.Errorf("database error: %w", err)
 	}
@@ -221,7 +227,7 @@ func (cs *CryptoService) DeleteCrypto(symbol string) error {
 	err := cs.cryptoDB.Delete(symbol)
 	if err != nil {
 		if err == db.ErrUnknownCoin {
-			return fmt.Errorf("cryptocurrency %s not found", symbol)
+			return ErrCryptoNotFound
 		}
 		return fmt.Errorf("database error: %w", err)
 	}
