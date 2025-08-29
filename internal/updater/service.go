@@ -34,6 +34,7 @@ func (u *Updater) StartUpdating() {
 	defer u.mu.Unlock()
 
 	if !u.Enabled {
+		log.Println("Updater: not enabled, cannot start")
 		return
 	}
 
@@ -73,16 +74,16 @@ func (u *Updater) EndUpdating() {
 }
 
 func (u *Updater) RestartUpdating(seconds int) {
-	if !u.Enabled {
-		return
-	}
+	u.mu.Lock()
+	u.Enabled = true
+	u.mu.Unlock()
 
 	u.EndUpdating()
+	
 	u.mu.Lock()
-	defer u.mu.Unlock()
-
 	u.UpdateTime = time.Duration(seconds) * time.Second
 	u.StopChan = make(chan struct{})
+	u.mu.Unlock()
 
 	log.Printf("Updater: restarting with new interval %s", u.UpdateTime)
 	u.StartUpdating()
@@ -92,7 +93,7 @@ func (u *Updater) GetUpdateTime() int {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 
-	return int(u.UpdateTime)
+	return int(u.UpdateTime.Seconds())
 }
 
 func (u *Updater) GetLastUpdate() time.Time {

@@ -14,8 +14,8 @@ type ScheduleSubParams struct {
 
 type ScheduleParams struct {
 	ScheduleSubParams
-	LastUpdate      time.Time `json:"last_update"`
-	NextUpdate      time.Time `json:"next_update"`
+	LastUpdate        *time.Time `json:"last_update"`
+	NextUpdate        *time.Time `json:"next_update"`
 }
 
 type PUTRequest struct {
@@ -32,15 +32,21 @@ func GETScheduleParamsHandler(u *Updater) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		updateTime := u.GetUpdateTime()
 		lastUpdate := u.GetLastUpdate()
-		nextUpdate := lastUpdate.Add(time.Duration(updateTime))
+		enabled := u.IsEnabled()
 
 		resp := ScheduleParams{
 			ScheduleSubParams: ScheduleSubParams{
-				Enabled: u.IsEnabled(),
+				Enabled:         enabled,
 				IntervalSeconds: updateTime,
-    		},
-			LastUpdate: lastUpdate,
-			NextUpdate: nextUpdate,
+			},
+		}
+
+		if !lastUpdate.IsZero() {
+			resp.LastUpdate = &lastUpdate
+			if enabled {
+				nextUpdate := lastUpdate.Add(time.Duration(updateTime) * time.Second)
+				resp.NextUpdate = &nextUpdate
+			}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -55,16 +61,28 @@ func PUTScheduleParamsHandler(u *Updater) http.HandlerFunc {
 		
 		err := json.NewDecoder(r.Body).Decode(&putRequest)
 		if err != nil || !(putRequest.IntervalSeconds <= 3600 && putRequest.IntervalSeconds >= 10) {
-			log.Println("Error during JSON parsing: ", err)
-			http.Error(w, `Bad Request`, http.StatusBadRequest)
+			log.Println("Error during JSON parsing or invalid interval: ", err)
+			http.Error(w, `{"error": "Bad Request - interval must be 10-3600 seconds"}`, http.StatusBadRequest)
 			return
 		}
 		
-		u.RestartUpdating(putRequest.IntervalSeconds)
+		if putRequest.Enabled {
+			u.RestartUpdating(putRequest.IntervalSeconds)
+		} else {
+			u.mu.Lock()
+			u.Enabled = false
+			u.mu.Unlock()
+			u.EndUpdating()
+		}
+
+		response := ScheduleSubParams{
+			Enabled:         u.IsEnabled(),
+			IntervalSeconds: u.GetUpdateTime(),
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(putRequest)
+		json.NewEncoder(w).Encode(response)
 	}
 }
 
@@ -72,6 +90,7 @@ func POSTScheduleTriggerHandler(u *Updater) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cnt, err := u.Update()
 		if err != nil {
+			log.Printf("Manual trigger failed: %v", err)
 			http.Error(w, `Server error`, http.StatusInternalServerError)
 			return
 		}
