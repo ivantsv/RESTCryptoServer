@@ -5,6 +5,7 @@ import (
 	"RESTCryptoServer/internal/crypto"
 	"RESTCryptoServer/internal/db"
 	"RESTCryptoServer/internal/redis"
+	"RESTCryptoServer/internal/updater"
 	"log"
 	"net/http"
 
@@ -39,6 +40,7 @@ func main() {
 
 	authService := auth.NewAuthService(userdb)
 	cryptoService := crypto.NewCryptoService(cryptodb, cache)
+	updaterService := updater.NewUpdater(cryptoService, 30)
 
 	router := chi.NewRouter()
 	router.Post("/auth/register", auth.RegisterHandler(authService))
@@ -50,6 +52,9 @@ func main() {
 	router.Get("/crypto/{symbol}/history", auth.AuthMiddleware(crypto.GETCryptoHistoryHandler(cryptoService)))
 	router.Get("/crypto/{symbol}/stats", auth.AuthMiddleware(crypto.GETCryptoStatsHandler(cryptoService)))
 	router.Delete("/crypto/{symbol}", auth.AuthMiddleware(crypto.DELETECryptoSymbolHandler(cryptoService)))
+	router.Get("/schedule", auth.AuthMiddleware(updater.GETScheduleParamsHandler(updaterService)))
+	router.Put("/schedule", auth.AuthMiddleware(updater.PUTScheduleParamsHandler(updaterService)))
+	router.Post("/schedule/trigger", auth.AuthMiddleware(updater.POSTScheduleTriggerHandler(updaterService)))
 
 	log.Println("Starting server on http://:8080")
 	err = http.ListenAndServe(":8080", router)

@@ -22,7 +22,7 @@ func NewUpdater(cs *crypto.CryptoService, t time.Duration) (*Updater) {
 	}
 
 	return &Updater{
-		UpdateTime: t,
+		UpdateTime: t * time.Second,
 		CryptoService: cs,
 		StopChan: make(chan struct{}),
 		Enabled: false,
