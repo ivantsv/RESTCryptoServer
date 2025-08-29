@@ -265,25 +265,21 @@ func (cs *CryptoService) updateCoinPrice(symbol string) (*CryptoResponse, error)
 		return nil, fmt.Errorf("failed to get coin list: %w", err)
 	}
 
-	ids, err := coingecko.GetIDBySymbol(symbol, coins)
+	coinID, err := coingecko.GetIDBySymbol(symbol, coins)
 	if err != nil {
-		return nil, fmt.Errorf("cryptocurrency with symbol %s not found on CoinGecko", symbol)
+		return nil, fmt.Errorf("cryptocurrency with symbol %s not found on CoinGecko: %w", symbol, err)
 	}
 
-	if len(ids) == 0 {
-		return nil, fmt.Errorf("cryptocurrency with symbol %s not found on CoinGecko", symbol)
-	}
-
-	coinID := ids[0]
+	log.Printf("Using CoinGecko ID '%s' for symbol '%s'", coinID, symbol)
 
 	priceData, err := coingecko.GetPriceByID(coinID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get price for %s: %w", symbol, err)
+		return nil, fmt.Errorf("failed to get price for %s (ID: %s): %w", symbol, coinID, err)
 	}
 
 	price, exists := priceData["usd"]
 	if !exists {
-		return nil, fmt.Errorf("USD price not available for %s", symbol)
+		return nil, fmt.Errorf("USD price not available for %s (ID: %s)", symbol, coinID)
 	}
 
 	var coinName string
@@ -297,6 +293,8 @@ func (cs *CryptoService) updateCoinPrice(symbol string) (*CryptoResponse, error)
 	if coinName == "" {
 		coinName = strings.ToUpper(symbol)
 	}
+
+	log.Printf("Found coin: %s (%s) - Price: $%.2f", coinName, symbol, price)
 
 	coinData := db.CoinData{
 		Name:         coinName,
