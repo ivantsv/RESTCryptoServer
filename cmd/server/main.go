@@ -2,9 +2,9 @@ package main
 
 import (
 	"RESTCryptoServer/internal/auth"
+	"RESTCryptoServer/internal/crypto"
 	"RESTCryptoServer/internal/db"
 	"RESTCryptoServer/internal/redis"
-	"RESTCryptoServer/internal/crypto"
 	"log"
 	"net/http"
 
