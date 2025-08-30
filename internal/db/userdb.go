@@ -116,3 +116,7 @@ func (udb *UserDB) Close() error {
     }
     return nil
 }
+
+func (udb *UserDB) Ping() error {
+	return udb.conn.Ping()
+}

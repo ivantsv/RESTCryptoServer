@@ -193,3 +193,7 @@ func (cdb *CryptoDB) Close() error {
 	}
 	return nil
 }
+
+func (cdb *CryptoDB) Ping() error {
+	return cdb.conn.Ping()
+}

@@ -1,0 +1,39 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alerts.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+scrape_configs:
+  # Метрики самого Prometheus
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Метрики твоего Go приложения
+  - job_name: 'crypto-server'
+    static_configs:
+      - targets: ['app:8080']
+    metrics_path: '/metrics'
+
+  # Метрики системы
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Метрики PostgreSQL
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  # Метрики Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
