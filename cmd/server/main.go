@@ -79,6 +79,35 @@ func main() {
 
 	router.Handle("/metrics", promhttp.Handler())
 
+	router.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<title>API Documentation</title>
+			<link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css" />
+		</head>
+		<body>
+			<div id="swagger-ui"></div>
+			<script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
+			<script>
+				SwaggerUIBundle({
+					url: '/swagger.yaml',
+					dom_id: '#swagger-ui',
+					presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.presets.standalone]
+				});
+			</script>
+		</body>
+		</html>
+		`))
+	})
+
+	router.Get("/swagger.yaml", func(w http.ResponseWriter, r *http.Request) {
+    	w.Header().Set("Content-Type", "application/yaml")
+    	http.ServeFile(w, r, "swagger.yaml")
+	})
+
 	router.Post("/auth/register", auth.RegisterHandler(authService))
 	router.Post("/auth/login", auth.LoginHandler(authService))
 
@@ -97,12 +126,6 @@ func main() {
 		r.Put("/schedule", updater.PUTScheduleParamsHandler(updaterService))
 		r.Post("/schedule/trigger", updater.POSTScheduleTriggerHandler(updaterService))
 	})
-
-	log.Println("Starting server on http://:8080")
-	err = http.ListenAndServe(":8080", router)
-	if err != nil {
-		log.Fatalln(err)
-	}
 
 	srv := &http.Server{
 		Addr:         ":8080",

@@ -16,6 +16,7 @@ WORKDIR /app
 
 COPY --from=builder /app/server .
 COPY --from=builder /app/internal/db/migrations ./internal/db/migrations
+COPY --from=builder /app/swagger.yaml .
 
 RUN addgroup -g 1000 appgroup && \
     adduser -D -u 1000 -G appgroup appuser && \

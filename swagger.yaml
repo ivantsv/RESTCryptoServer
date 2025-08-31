@@ -1,0 +1,821 @@
+openapi: 3.0.3
+info:
+  title: Crypto Server API
+  description: |
+    A high-performance REST API service for cryptocurrency price tracking and management.
+    
+    ## Features
+    - JWT-based authentication
+    - Real-time cryptocurrency price tracking
+    - Historical price data with statistical analysis
+    - Scheduled automatic updates
+    - Comprehensive monitoring and health checks
+    
+    ## Authentication
+    Most endpoints require a Bearer token. Obtain a token by registering a new user or logging in.
+    
+    **Example**: `Authorization: Bearer eyJhbGciOiJIUzI1NiIs...`
+    
+  version: 1.0.0
+  contact:
+    name: Crypto Server API
+    url: https://github.com/your-username/RESTCryptoServer
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.cryptoserver.com
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User registration and login operations
+  - name: Cryptocurrency
+    description: Cryptocurrency tracking and management
+  - name: Scheduler
+    description: Automatic update scheduling
+  - name: Health
+    description: Health checks and monitoring
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Create a new user account with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              username: "john_doe"
+              password: "secure_password123"
+      responses:
+        '201':
+          description: User successfully registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              example:
+                token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '400':
+          description: Bad request - invalid input
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "Bad Request"
+        '409':
+          description: User already exists
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "User already exists"
+        '500':
+          description: Internal server error
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "Server error"
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      description: Authenticate user and receive JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              username: "john_doe"
+              password: "secure_password123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Bad request - invalid JSON
+        '401':
+          description: Incorrect username or password
+
+  /crypto:
+    get:
+      tags:
+        - Cryptocurrency
+      summary: Get all tracked cryptocurrencies
+      description: Retrieve a list of all cryptocurrencies currently being tracked
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of cryptocurrencies
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CryptoList'
+              example:
+                cryptos:
+                  - symbol: "btc"
+                    name: "Bitcoin"
+                    current_price: 45230.50
+                    last_updated: "2025-08-31T14:30:00Z"
+                  - symbol: "eth"
+                    name: "Ethereum"
+                    current_price: 2845.75
+                    last_updated: "2025-08-31T14:30:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      tags:
+        - Cryptocurrency
+      summary: Add new cryptocurrency
+      description: Add a new cryptocurrency to tracking system
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SymbolRequest'
+            example:
+              symbol: "btc"
+      responses:
+        '200':
+          description: Cryptocurrency added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CryptoResponse'
+        '400':
+          description: Bad request - invalid symbol
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Cryptocurrency already exists
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /crypto/{symbol}:
+    get:
+      tags:
+        - Cryptocurrency
+      summary: Get specific cryptocurrency
+      description: Get current price and details for a specific cryptocurrency
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: Cryptocurrency symbol (e.g., btc, eth)
+          schema:
+            type: string
+            example: "btc"
+      responses:
+        '200':
+          description: Cryptocurrency details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CryptoResponse'
+              example:
+                symbol: "btc"
+                name: "Bitcoin"
+                current_price: 45230.50
+                last_updated: "2025-08-31T14:30:00Z"
+        '400':
+          description: Cryptocurrency not found
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    delete:
+      tags:
+        - Cryptocurrency
+      summary: Delete cryptocurrency
+      description: Remove cryptocurrency from tracking system
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: Cryptocurrency symbol to delete
+          schema:
+            type: string
+            example: "btc"
+      responses:
+        '200':
+          description: Cryptocurrency deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                example: {}
+        '400':
+          description: Cryptocurrency not found
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /crypto/{symbol}/refresh:
+    put:
+      tags:
+        - Cryptocurrency
+      summary: Refresh cryptocurrency price
+      description: Manually trigger price update for specific cryptocurrency
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: Cryptocurrency symbol to refresh
+          schema:
+            type: string
+            example: "btc"
+      responses:
+        '200':
+          description: Price refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CryptoResponse'
+        '400':
+          description: Cryptocurrency not found
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /crypto/{symbol}/history:
+    get:
+      tags:
+        - Cryptocurrency
+      summary: Get price history
+      description: Get historical price data for cryptocurrency (last 100 entries)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: Cryptocurrency symbol
+          schema:
+            type: string
+            example: "btc"
+      responses:
+        '200':
+          description: Price history data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CryptoHistoryResponse'
+              example:
+                symbol: "btc"
+                history:
+                  - price: 45230.50
+                    timestamp: "2025-08-31T14:30:00Z"
+                  - price: 45180.25
+                    timestamp: "2025-08-31T14:25:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /crypto/{symbol}/stats:
+    get:
+      tags:
+        - Cryptocurrency
+      summary: Get price statistics
+      description: Get statistical analysis of price data including min/max/average prices and changes
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: Cryptocurrency symbol
+          schema:
+            type: string
+            example: "btc"
+      responses:
+        '200':
+          description: Price statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CryptoStatsResponse'
+              example:
+                symbol: "btc"
+                current_price: 45230.50
+                stats:
+                  min_price: 44800.00
+                  max_price: 45500.00
+                  avg_price: 45150.25
+                  price_change: 430.50
+                  price_change_percent: 0.96
+                  records_count: 48
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /schedule:
+    get:
+      tags:
+        - Scheduler
+      summary: Get schedule configuration
+      description: Get current automatic update schedule settings
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current schedule configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+              example:
+                enabled: true
+                interval_seconds: 300
+                last_update: "2025-08-31T14:25:00Z"
+                next_update: "2025-08-31T14:30:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      tags:
+        - Scheduler
+      summary: Update schedule configuration
+      description: Enable/disable automatic updates and set update interval
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleRequest'
+            example:
+              enabled: true
+              interval_seconds: 300
+      responses:
+        '200':
+          description: Schedule updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleUpdateResponse'
+        '400':
+          description: Bad request - interval must be 10-3600 seconds
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /schedule/trigger:
+    post:
+      tags:
+        - Scheduler
+      summary: Trigger manual update
+      description: Manually trigger price updates for all tracked cryptocurrencies
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Manual update triggered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TriggerResponse'
+              example:
+                updated_count: 5
+                timestamp: "2025-08-31T14:30:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Comprehensive health check including database and cache status
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "healthy"
+                timestamp: "2025-08-31T14:30:00Z"
+                uptime: "2h30m45s"
+                checks:
+                  postgres_users:
+                    status: "healthy"
+                  postgres_crypto:
+                    status: "healthy"
+                  redis:
+                    status: "healthy"
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      description: Check if service is ready to accept requests
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "OK"
+        '503':
+          description: Service is not ready
+
+  /live:
+    get:
+      tags:
+        - Health
+      summary: Liveness check
+      description: Check if service is alive (for Kubernetes liveness probe)
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "OK"
+
+  /metrics:
+    get:
+      tags:
+        - Health
+      summary: Prometheus metrics
+      description: Export metrics in Prometheus format
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /auth/login or /auth/register
+
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: User's username
+          example: "john_doe"
+          minLength: 1
+        password:
+          type: string
+          description: User's password
+          example: "secure_password123"
+          minLength: 1
+
+    TokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT authentication token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImpvaG5fZG9lIiwiZXhwIjoxNjMwNTA0ODAwfQ.signature"
+
+    SymbolRequest:
+      type: object
+      required:
+        - symbol
+      properties:
+        symbol:
+          type: string
+          description: Cryptocurrency symbol (case-insensitive)
+          example: "btc"
+          pattern: "^[a-zA-Z0-9]+$"
+
+    CryptoResponse:
+      type: object
+      properties:
+        symbol:
+          type: string
+          description: Cryptocurrency symbol
+          example: "btc"
+        name:
+          type: string
+          description: Full name of cryptocurrency
+          example: "Bitcoin"
+        current_price:
+          type: number
+          format: double
+          description: Current price in USD
+          example: 45230.50
+        last_updated:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2025-08-31T14:30:00Z"
+
+    CryptoList:
+      type: object
+      properties:
+        cryptos:
+          type: array
+          items:
+            $ref: '#/components/schemas/CryptoResponse'
+          description: List of tracked cryptocurrencies
+
+    PriceHistoryEntry:
+      type: object
+      properties:
+        price:
+          type: number
+          format: double
+          description: Price at specific timestamp
+          example: 45230.50
+        timestamp:
+          type: string
+          format: date-time
+          description: When this price was recorded
+          example: "2025-08-31T14:30:00Z"
+
+    CryptoHistoryResponse:
+      type: object
+      properties:
+        symbol:
+          type: string
+          description: Cryptocurrency symbol
+          example: "btc"
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceHistoryEntry'
+          description: Price history (up to 100 latest entries)
+          maxItems: 100
+
+    CryptoStats:
+      type: object
+      properties:
+        min_price:
+          type: number
+          format: double
+          description: Minimum price in history
+          example: 44800.00
+        max_price:
+          type: number
+          format: double
+          description: Maximum price in history
+          example: 45500.00
+        avg_price:
+          type: number
+          format: double
+          description: Average price across all history
+          example: 45150.25
+        price_change:
+          type: number
+          format: double
+          description: Price change from oldest to current
+          example: 430.50
+        price_change_percent:
+          type: number
+          format: double
+          description: Percentage change from oldest to current
+          example: 0.96
+        records_count:
+          type: integer
+          description: Number of price records in history
+          example: 48
+
+    CryptoStatsResponse:
+      type: object
+      properties:
+        symbol:
+          type: string
+          description: Cryptocurrency symbol
+          example: "btc"
+        current_price:
+          type: number
+          format: double
+          description: Current price in USD
+          example: 45230.50
+        stats:
+          $ref: '#/components/schemas/CryptoStats'
+
+    ScheduleRequest:
+      type: object
+      required:
+        - enabled
+        - interval_seconds
+      properties:
+        enabled:
+          type: boolean
+          description: Whether automatic updates are enabled
+          example: true
+        interval_seconds:
+          type: integer
+          description: Update interval in seconds (10-3600)
+          minimum: 10
+          maximum: 3600
+          example: 300
+
+    ScheduleUpdateResponse:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          description: Whether automatic updates are enabled
+          example: true
+        interval_seconds:
+          type: integer
+          description: Current update interval in seconds
+          example: 300
+
+    ScheduleResponse:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          description: Whether automatic updates are enabled
+          example: true
+        interval_seconds:
+          type: integer
+          description: Current update interval in seconds
+          example: 300
+        last_update:
+          type: string
+          format: date-time
+          description: When last update occurred
+          example: "2025-08-31T14:25:00Z"
+          nullable: true
+        next_update:
+          type: string
+          format: date-time
+          description: When next update is scheduled
+          example: "2025-08-31T14:30:00Z"
+          nullable: true
+
+    TriggerResponse:
+      type: object
+      properties:
+        updated_count:
+          type: integer
+          description: Number of cryptocurrencies updated
+          example: 5
+        timestamp:
+          type: string
+          format: date-time
+          description: When the update was triggered
+          example: "2025-08-31T14:30:00Z"
+
+    HealthCheckResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: ["healthy", "unhealthy"]
+          description: Health status
+          example: "healthy"
+        message:
+          type: string
+          description: Optional error message if unhealthy
+          example: "Connection timeout"
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: ["healthy", "unhealthy"]
+          description: Overall service health
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+          description: Health check timestamp
+          example: "2025-08-31T14:30:00Z"
+        uptime:
+          type: string
+          description: Service uptime duration
+          example: "2h30m45s"
+        checks:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/HealthCheckResult'
+          description: Individual component health checks
+          example:
+            postgres_users:
+              status: "healthy"
+            postgres_crypto:
+              status: "healthy"
+            redis:
+              status: "healthy"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Bad Request - interval must be 10-3600 seconds"
+
+  responses:
+    Unauthorized:
+      description: Authentication required or token invalid
+      content:
+        text/plain:
+          schema:
+            type: string
+          examples:
+            missing_header:
+              value: "Missing Authorization header"
+            invalid_format:
+              value: "Invalid Authorization header format"
+            invalid_token:
+              value: "Invalid or expired token"
+
+    ServerError:
+      description: Internal server error
+      content:
+        text/plain:
+          schema:
+            type: string
+          example: "Server error"
+
+    BadRequest:
+      description: Bad request
+      content:
+        text/plain:
+          schema:
+            type: string
+          example: "Bad Request"
+
+  examples:
+    BitcoinResponse:
+      summary: Bitcoin data example
+      value:
+        symbol: "btc"
+        name: "Bitcoin"
+        current_price: 45230.50
+        last_updated: "2025-08-31T14:30:00Z"
+
+    EthereumResponse:
+      summary: Ethereum data example
+      value:
+        symbol: "eth"
+        name: "Ethereum"
+        current_price: 2845.75
+        last_updated: "2025-08-31T14:30:00Z"
+
+    PopularCryptos:
+      summary: Popular cryptocurrency symbols
+      value:
+        - "btc" # Bitcoin
+        - "eth" # Ethereum
+        - "usdt" # Tether
+        - "bnb" # Binance Coin
+        - "sol" # Solana
+        - "usdc" # USD Coin
+        - "xrp" # XRP
+        - "doge" # Dogecoin
+        - "ada" # Cardano
+        - "trx" # TRON
+
+security:
+  - BearerAuth: []
