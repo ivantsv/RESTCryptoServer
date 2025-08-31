@@ -157,5 +157,5 @@ func (r *RedisClient) Close() error {
 }
 
 func (r *RedisClient) Ping() error {
-    return r.Ping()
+    return r.client.Ping(r.ctx).Err()
 }
