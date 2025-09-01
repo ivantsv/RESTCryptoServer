@@ -25,7 +25,6 @@ func GenerateToken(username string) (string, error) {
 		return "", err
 	}
 
-	log.Println("token: ", tokenString)
 	return tokenString, nil
 }
 
